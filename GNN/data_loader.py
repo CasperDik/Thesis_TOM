@@ -28,8 +28,8 @@ class HumanPresenceDataLoader():
     def load_dataset(self):
         try:
             # todo: filename and location as input
-            self.A = np.load("adj_mat.npy")
-            self.X = np.load("node_values.npy")
+            self.A = np.load("Adj_Matrix.npy")
+            self.X = np.load("FeatureMatrix.npy")
 
         except FileNotFoundError:
             sys.exit("File not found")
@@ -80,13 +80,6 @@ class HumanPresenceDataLoader():
         return dataset
 
 if __name__ == "__main__":
-    directory = "C:/Users/caspe/OneDrive/Documenten/MSc TOM/Thesis TOM/GNN/Data/"
-    filename = "data_100cm"
-
     loader = HumanPresenceDataLoader()
     dataset = loader.get_dataset(num_t_in=60, num_t_out=10)
     print(next(iter(dataset)))
-
-    # A = np.load("adj_mat.npy")
-    # X = np.load("node_values.npy")
-    # print(X.shape)
