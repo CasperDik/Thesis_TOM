@@ -4,6 +4,7 @@ from torch_geometric.utils import dense_to_sparse
 from torch_geometric_temporal import StaticGraphTemporalSignal
 import sys
 
+import pickle
 
 """"
 code is based upon the dataloaders of the torch geometric temporal library
@@ -28,8 +29,10 @@ class HumanPresenceDataLoader():
     def load_dataset(self):
         try:
             # todo: filename and location as input
-            self.A = np.load("Adj_Matrix.npy")
-            self.X = np.load("FeatureMatrix.npy")
+            # self.A = np.load("Adj_Matrix.npy")
+            # self.X = np.load("FeatureMatrix.npy")
+            self.A = np.load("data/input_matrices/test_A.npy")
+            self.X = np.load("data/input_matrices/test_F.npy")
 
         except FileNotFoundError:
             sys.exit("File not found")
@@ -81,5 +84,12 @@ class HumanPresenceDataLoader():
 
 if __name__ == "__main__":
     loader = HumanPresenceDataLoader()
-    dataset = loader.get_dataset(num_t_in=60, num_t_out=10)
+    dataset = loader.get_dataset(num_t_in=12, num_t_out=12)
     print(next(iter(dataset)))
+
+    pickle.dump(dataset, open("data/input_matrices/test_data_for_size.p", "wb"))
+
+    # data = pickle.load(open("dataset.p", "rb"))
+    # print(type(data))
+    # print(next(iter(data)))
+

@@ -11,7 +11,6 @@ X, feature matrix --> TxNxF, For all T times, for all N nodes the array F with f
 import numpy as np
 import networkx as nx
 import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import os
 
@@ -25,6 +24,7 @@ def getfiles(path):
 
     filepaths = []
     for folder in folder_names:
+        # todo: different files?
         if folder[-5:] == "100cm" and folder[:11] == "simulation1":
             for file in os.scandir(path+ "/" + folder):
                 if file.is_file() and file.path[-4:] == ".txt":
@@ -40,6 +40,7 @@ def load_features(f):
     # load data
     d = np.genfromtxt(f, delimiter=[1, 20], dtype=[("f0", np.uint8), ("f1", object)])
 
+    # todo: load all features
     # =0 if no obstacle (thus no wall, coffee, ws etc), otherwise 1
     obstacle = np.where(d["f1"] == b"\n", 0, 1)
 
@@ -69,7 +70,6 @@ def feature_matrix(files: list):
         d = load_features(f)
         features = np.vstack((features, d[None, :, :]))
     print(features.shape)
-
     return features
 
 
@@ -79,6 +79,7 @@ def adj_matrix(N_Nodes: int):
     # but some exception! --> indicated in the comments below
 
     # only works if adjacency matrix is a square matrix of NxN
+    # only correct if adjacency matrix is symmetric --> undirected graph
 
     dim = int(np.sqrt(N_Nodes))
     adj_mat = np.zeros((N_Nodes, N_Nodes))
@@ -108,15 +109,16 @@ def adj_matrix(N_Nodes: int):
 
 
 def plot_adj_matrix(A):
-    # confirms that adjacency matrix is correctly made
+    matplotlib.use('TkAgg')
 
+    # confirms that adjacency matrix is correctly made
     Graph = nx.from_numpy_matrix(A, create_using=nx.DiGraph)
     nx.draw_networkx(Graph)
     plt.show()
 
 
 if __name__ == "__main__":
-    path = "C:/Users/caspe/OneDrive/Documenten/MSc TOM/Thesis TOM/GNN/Data/logs22-04-22"
+    path = "/GNN/data/logs22-04-22"
     files = getfiles(path)
 
     # files = ["Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m01s.txt", "Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m02s.txt", "Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m03s.txt", "Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m04s.txt"]
@@ -129,6 +131,6 @@ if __name__ == "__main__":
     print(F.shape)
     print(A.shape)
 
-    np.save("FeatureMatrix.npy", F)
-    np.save("Adj_Matrix.npy", A)
+    np.save("data/input_matrices/FeatureMatrix.npy", F)
+    np.save("data/input_matrices/Adj_Matrix.npy", A)
 
