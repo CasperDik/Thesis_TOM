@@ -6,8 +6,9 @@ from CMap2D import gridshow, CMap2D
 
 from GNN.STGNNs import A3T_GNN
 from GNN.data_loader import HumanPresenceDataLoader
+import pickle
 
-def run_A3T_GNN(test_loader, train_loader, static_edge_index):
+def run_A3T_GNN(test_loader, train_loader, static_edge_index, idx, threshold):
     # GPU support
     # DEVICE = torch.device('cuda') # cuda
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -28,15 +29,15 @@ def run_A3T_GNN(test_loader, train_loader, static_edge_index):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            step= step+ 1
+            step = step+1
             loss_list.append(loss.item())
             if step % 100 == 0 :
                 print(sum(loss_list)/len(loss_list))
         print("Epoch {} train RMSE: {:.4f}".format(epoch, sum(loss_list)/len(loss_list)))
 
-    yhat = evaluate_performance(model, loss_fn, static_edge_index, test_loader)
+    yhat, labels = evaluate_performance(model, loss_fn, static_edge_index, test_loader, threshold)
 
-    plot_occupancy(yhat, labels)
+    plot_occupancy_grid(yhat, labels, t=1, batch_nr=5, threshold=threshold, idx=idx)
 
 
 def reshape_data(dataset, batch_size):
@@ -85,29 +86,15 @@ def print_model_layout(model, optimizer):
         print(var_name, '\t', optimizer.state_dict()[var_name])
 
 
-def evaluate_performance(model, loss_fn, static_edge_index, test_loader):
-    model.eval()
-    step = 0
-    # Store for analysis
-    total_loss = []
-    for encoder_inputs, labels in test_loader:
-        # Get model predictions
-        yhat = model(encoder_inputs, static_edge_index)
-        # Mean squared error
-        loss = loss_fn(yhat, labels)
-        total_loss.append(loss.item())
-        # Store for analysis below
-        # test_labels.append(labels)
-        # predictions.append(y_hat)
+def plot_occupancy_grid(y_hat, labels, t, batch_nr, threshold, idx):
+    y_hat = y_hat.cpu().detach().numpy()
+    labels = labels.cpu().detach().numpy()
 
-    print("Test MSE: {:.4f}".format(sum(total_loss) / len(total_loss)))
+    y_hat = back_to_occupancy_grid(y_hat, idx, batch_nr=batch_nr, t=t)
+    labels = back_to_occupancy_grid(labels, idx, batch_nr=batch_nr, t=t)
 
-    return yhat
-
-
-def plot_occupancy(y_hat, labels):
-    yhat1 = reshape_output(y_hat, t=11, batch_nr=10)
-    ytrue1 = reshape_output(labels, t=11, batch_nr=10)
+    yhat1 = reshape_output(y_hat, t=t, threshold=threshold)
+    ytrue1 = reshape_output(labels, t=t, threshold=threshold)
 
     grid1 = CMap2D()
     grid2 = CMap2D()
@@ -123,24 +110,127 @@ def plot_occupancy(y_hat, labels):
     plt.sca(ax2)
     plt.title("True Human Presence")
     gridshow(grid2.occupancy())
-
     plt.show()
 
+    # plt.savefig("output.png")
 
-def reshape_output(arr, t, batch_nr):
-    y = arr.cpu().detach().numpy()
-    y = y[batch_nr][:, t]
-    y = np.array(np.array_split(y, 100))
 
-    return y
+def reshape_output(y, t, threshold):
+  y = y[:, t]
+  y = np.where(y>threshold, y, 0)
+  y = np.array(np.array_split(y, 100))
+
+  return y
+
+
+def back_to_occupancy_grid(F, idx, batch_nr, t):
+    """add back the removed nodes"""
+    full_F = np.insert(F[batch_nr][:,], idx[0] - np.arange(len(idx[0])), 0, axis=0)
+    return full_F
+
+
+def evaluate_performance(model, loss_fn, static_edge_index, test_loader, threshold):
+    model.eval()
+    step = 0
+    # Store for analysis
+    total_loss = []
+    total_precision = []
+    total_recall = []
+    total_accuracy = []
+    total_f1 = []
+
+    # todo: add the performance metrics and test it
+
+    for encoder_inputs, labels in test_loader:
+        # Get model predictions
+        yhat = model(encoder_inputs, static_edge_index)
+
+        # Mean squared error
+        loss = loss_fn(yhat, labels)
+        total_loss.append(loss.item())
+
+        # use threshold to make predictions binary
+        yhat = np.where(yhat > threshold, 1, 0)
+        labels = np.where(labels > threshold, 1, 0)
+
+        # precision --> true positives / all positives of prediction
+        tp = len(np.where((yhat == labels) & (yhat == 1))[0])
+        ap = len(np.where(yhat == 1)[0])
+        precision = tp / ap
+        total_precision.append(precision)
+
+        # recall --> tp/(tp+fn)
+        fn = len(np.where((yhat != labels) & (yhat == 0))[0])
+        recall = tp / (tp + fn)
+        total_recall.append(recall)
+
+        # accuracy --> (tp+tn) / (tp+tn+fp+fn)
+        tn = len(np.where((yhat == labels) & (yhat == 0))[0])
+        fp = len(np.where((yhat != labels) & (yhat == 1))[0])
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        total_accuracy.append(accuracy)
+
+        # F1 score --> 2 * (precision*recall)/(precision + recall)
+        f1 = 2 * (precision * recall) / (precision + recall)
+        total_f1.append(f1)
+
+    print("Test MSE: {:.4f}".format(sum(total_loss) / len(total_loss)))
+    print("Test accuracy: {:.4f}".format(sum(total_accuracy) / len(total_accuracy)))
+    print("Test precision: {:.4f}".format(sum(total_precision) / len(total_precision)))
+    print("Test recall: {:.4f}".format(sum(total_recall) / len(total_recall)))
+    print("Test F1: {:.4f}".format(sum(total_f1) / len(total_f1)))
+
+    return yhat, labels     # todo: this returns the last yhat, should that be the case??
+
+
+def inside_model_performance_loop(yhat, labels, threshold):
+    loss_fn = torch.nn.MSELoss()
+
+    loss = loss_fn(yhat, labels)
+    print(loss)
+
+    # make it binary with threshold
+    yhat = np.where(yhat > threshold, 1, 0)
+    labels = np.where(labels > threshold, 1, 0)
+
+    # precision --> true positives / all positives of prediction
+    tp = len(np.where((yhat == labels) & (yhat == 1))[0])
+    ap = len(np.where(yhat == 1)[0])
+    precision = tp/ap
+    print("precision: ", precision)
+
+    # recall --> tp/(tp+fn)
+    fn = len(np.where((yhat != labels) & (yhat == 0))[0])
+    recall = tp/(tp+fn)
+    print("recall: ", recall)
+
+    # accuracy --> (tp+tn) / (tp+tn+fp+fn)
+    tn = len(np.where((yhat == labels) & (yhat == 0))[0])
+    fp = len(np.where((yhat != labels) & (yhat == 1))[0])
+    accuracy = (tp+tn)/(tp+tn+fp+fn)
+    print("accuracy: ", accuracy)
+
+    # F1 score --> 2 * (precision*recall)/(precision + recall)
+    F1 = 2*(precision*recall)/(precision+recall)
+    print("F1: ", F1)
 
 
 if __name__ == "__main__":
-    loader = HumanPresenceDataLoader()
-    dataset = loader.get_dataset(num_t_in=12, num_t_out=12)
-    print(next(iter(dataset)))
+    # idx = np.load("data/input_matrices/idx.npy")
+    # F = np.load("data/input_matrices/FeatureMatrix.npy")
+    # A = np.load("data/input_matrices/Adj_Matrix.npy")
+    #
+    # loader = HumanPresenceDataLoader(A, F)
+    # dataset = loader.get_dataset(num_t_in=12, num_t_out=12)
+    # print(next(iter(dataset)))
+    #
+    # batch_size = 16
+    # test_loader, train_loader, static_edge_index = reshape_data(dataset, batch_size)
+    #
+    # run_A3T_GNN(test_loader, train_loader, static_edge_index, idx)
+    y_hat = pickle.load(open("data/datasets/yhat.p", "rb"))
+    labels = pickle.load(open("data/datasets/labels.p", "rb"))
+    # todo: klopt labels wel? is het normalized?
 
-    batch_size = 16
-    test_loader, train_loader, static_edge_index = reshape_data(dataset, batch_size)
+    inside_model_performance_loop(y_hat, labels, threshold=0.7)
 
-    run_A3T_GNN(test_loader, train_loader, static_edge_index)

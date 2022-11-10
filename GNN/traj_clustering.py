@@ -91,7 +91,7 @@ def plot_all_traj_indiv(traj_lst):
 
             ans = input("y for next trajectory, n to break the loop")
             if (ans.lower() == 'n'):
-                break
+                return
 
 
 if __name__=="__main__":
@@ -103,23 +103,23 @@ if __name__=="__main__":
 
     # plot traj 1 by 1
     plot_all_traj_indiv(traj_lst)
-
-    traj_lst = traj_segmentation(traj_lst)
-    D = distance_matrix(traj_lst)
-
-    #120 and 4 worked decent, (120, 6) also
-    # try low eps and high min sample
-    mdl = DBSCAN(eps=120, min_samples=4)
-    cluster_lst = mdl.fit_predict(D)
-
-    print(cluster_lst)
-    print(len(cluster_lst))
-    # np.save("cluster_lst.npy", cluster_lst)
-
-
-    # cluster_lst = cluster_lst[cluster_lst == -1]
-
-    plot_cluster(traj_lst, cluster_lst)
-
-    # has paper with references
-    #https://medium.com/@tarammullin/dbscan-parameter-estimation-ff8330e3a3bd
+    #
+    # traj_lst = traj_segmentation(traj_lst)
+    # D = distance_matrix(traj_lst)
+    #
+    # #120 and 4 worked decent, (120, 6) also
+    # # try low eps and high min sample
+    # mdl = DBSCAN(eps=120, min_samples=4)
+    # cluster_lst = mdl.fit_predict(D)
+    #
+    # print(cluster_lst)
+    # print(len(cluster_lst))
+    # # np.save("cluster_lst.npy", cluster_lst)
+    #
+    #
+    # # cluster_lst = cluster_lst[cluster_lst == -1]
+    #
+    # plot_cluster(traj_lst, cluster_lst)
+    #
+    # # has paper with references
+    # #https://medium.com/@tarammullin/dbscan-parameter-estimation-ff8330e3a3bd

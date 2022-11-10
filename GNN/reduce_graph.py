@@ -30,19 +30,37 @@ def reduce_graph(F, A):
 
     # need list with all zeros idx
     idx = np.where(heatmap==0)
+    # np.save("data/input_matrices/idx.npy", idx)
+
     # delete from A and F
     A = np.delete(A, idx, 0)
     A = np.delete(A, idx, 1)
     F = np.delete(F, idx, axis=1)
 
-    return F, A
+    return F, A, idx
+
+
+def back_to_occupancy_grid(F, idx):
+    """add back the removed nodes"""
+    F_prime = F[:, :, 0]
+    full_F = np.insert(F_prime, idx[0] - np.arange(len(idx[0])), 0, axis=1)
+
+    # test if still same after removing and adding back the nodes --> F
+    # F_p = np.load("data/input_matrices/FeatureMatrix.npy")[:, :, 0]
+    # print(np.array_equal(F_p, full_F))
+
+    return full_F
 
 if __name__ == "__main__":
     F = np.load("data/input_matrices/FeatureMatrix.npy")
     A = np.load("data/input_matrices/Adj_Matrix.npy")
 
-    F, A = reduce_graph(F, A)
+    # inspect_zero_values(F)
+    F, A, idx = reduce_graph(F, A)
 
-    np.save("data/input_matrices/test_A.npy", A)
-    np.save("data/input_matrices/test_F.npy", F)
+    F = back_to_occupancy_grid(F, idx)
+
+
+    # np.save("data/input_matrices/test_A.npy", A)
+    # np.save("data/input_matrices/test_F.npy", F)
     # A about 5 times smaller, F half the size, entire dataset about half the size

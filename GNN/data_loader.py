@@ -23,25 +23,16 @@ pip install torch_geometric_temporal
 """
 
 class HumanPresenceDataLoader():
-    def __init__(self):
-        self.load_dataset()
+    def __init__(self, A, F, normalize: bool = False):
+        self.A = A
+        self.X = F
+        self.norm = normalize
 
-    def load_dataset(self):
-        try:
-            # todo: filename and location as input
-            # self.A = np.load("Adj_Matrix.npy")
-            # self.X = np.load("FeatureMatrix.npy")
-            self.A = np.load("data/input_matrices/test_A.npy")
-            self.X = np.load("data/input_matrices/test_F.npy")
-
-        except FileNotFoundError:
-            sys.exit("File not found")
-
-    def data_transformations(self, normalize: bool = False):
+    def data_transformations(self):
         self.X = self.X.transpose((1, 2, 0))    # transpose not needed if in correct format imported
         self.X = self.X.astype(np.float32)
 
-        if normalize == True:
+        if self.norm == True:
             self.X = self.normalize_zscore(self.X)
 
         self.A = torch.from_numpy(self.A)
@@ -83,7 +74,10 @@ class HumanPresenceDataLoader():
         return dataset
 
 if __name__ == "__main__":
-    loader = HumanPresenceDataLoader()
+    F = np.load("data/input_matrices/FeatureMatrix.npy")
+    A = np.load("data/input_matrices/Adj_Matrix.npy")
+
+    loader = HumanPresenceDataLoader(A, F)
     dataset = loader.get_dataset(num_t_in=12, num_t_out=12)
     print(next(iter(dataset)))
 

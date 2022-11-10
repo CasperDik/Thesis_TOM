@@ -43,6 +43,9 @@ def extract_trajectories(dataset):
     assigned = 0
     total = np.sum(entry)
 
+    print(i, len(workers))
+    lst = []
+
     while True:
       for w in workers:
         while len(w.points) < max_occupancy:
@@ -83,6 +86,7 @@ def extract_trajectories(dataset):
         while j < len(row_indices):
           if len(occupied[j]) < entry[row_indices[j], col_indices[j]]:
             p = np.float64([col_indices[j], row_indices[j]])
+            lst.append(p)
             worker = Worker(worker_idx)
             worker.centroid = p
             workers.append(worker)
@@ -123,7 +127,7 @@ def save_results(workers):
   print(f"Saved in {outfn}")
 
 if __name__=="__main__":
-  dataset = np.load("data/data_100cm_100p_sim1.npy")
+  dataset = np.load("data/data_100cm_100p_sim1.npy")[2000:4000]
   print(dataset.shape)
 
   extract_trajectories(dataset)

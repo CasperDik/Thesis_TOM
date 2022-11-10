@@ -25,7 +25,8 @@ def getfiles(path):
     filepaths = []
     for folder in folder_names:
         # todo: different files?
-        if folder[-5:] == "100cm" and folder[:11] == "simulation1":
+        #if folder[-5:] == "100cm" and folder[:11] == "simulation1":
+        if folder == "simulation1-100p-100cm":
             for file in os.scandir(path+ "/" + folder):
                 if file.is_file() and file.path[-4:] == ".txt":
                     filepaths.append(file.path)
@@ -39,13 +40,16 @@ def load_features(f):
 
     # load data
     d = np.genfromtxt(f, delimiter=[1, 20], dtype=[("f0", np.uint8), ("f1", object)])
+    x = d["f1"].astype("U")
 
-    # todo: load all features
-    # =0 if no obstacle (thus no wall, coffee, ws etc), otherwise 1
-    obstacle = np.where(d["f1"] == b"\n", 0, 1)
+    w = np.where(np.char.find(x, "Wall") > 0, 1, 0)
+    c = np.where(np.char.find(x, "coffee") > 0, 1, 0)
+    ws = np.where(np.char.find(x, "WS") > 0, 1, 0)
 
-    # stack human presence and obstacle
-    d = np.stack((d["f0"], obstacle), axis=1)
+    # first column is human presence, second wall, third coffee, fourth workstation
+    d = np.stack((d["f0"], w), axis=1)
+    d = np.concatenate((d, c[:, None]), axis=1)
+    d = np.concatenate((d, ws[:, None]), axis=1)
 
     return d
 
@@ -78,7 +82,7 @@ def adj_matrix(N_Nodes: int):
     # in GENERAL connect a node n to itself, next node below, node to the right, node to the right above and below diagonally
     # but some exception! --> indicated in the comments below
 
-    # only works if adjacency matrix is a square matrix of NxN
+    # only works if grid is a square matrix of NxN
     # only correct if adjacency matrix is symmetric --> undirected graph
 
     dim = int(np.sqrt(N_Nodes))
@@ -118,19 +122,20 @@ def plot_adj_matrix(A):
 
 
 if __name__ == "__main__":
-    path = "/GNN/data/logs22-04-22"
+    path = r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs22-04-22"
     files = getfiles(path)
 
     # files = ["Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m01s.txt", "Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m02s.txt", "Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m03s.txt", "Data/logs22-04-22/simulation1-50p-50cm/heatmap_08H00m04s.txt"]
 
     F = feature_matrix(files)
+    print(F.shape)
     N_nodes = len(F[0])
     A = adj_matrix(N_nodes)
     # plot_adj_matrix(A)
 
     print(F.shape)
     print(A.shape)
-
-    np.save("data/input_matrices/FeatureMatrix.npy", F)
-    np.save("data/input_matrices/Adj_Matrix.npy", A)
+    #
+    # np.save("data/input_matrices/FeatureMatrix.npy", F)
+    # np.save("data/input_matrices/Adj_Matrix.npy", A)
 
