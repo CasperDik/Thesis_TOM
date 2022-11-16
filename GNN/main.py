@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+import torch
 from sklearn.cluster import DBSCAN
 
 from GNN.data_loader import HumanPresenceDataLoader
@@ -34,7 +35,7 @@ np.save("data/input_matrices/FeatureMatrix.npy", F)
 N_nodes = len(F[0])
 A = adj_matrix(N_nodes)
 print(A.shape)
-plot_adj_matrix(A)
+# plot_adj_matrix(A)
 np.save("data/input_matrices/Adj_Matrix.npy", A)
 
 ################### Reduce Graph ###################
@@ -53,21 +54,29 @@ np.save("data/input_matrices/idx.npy", idx)
 
 ################### Load Data for Model ###################
 # load dataset into correct format
-F = np.load("data/input_matrices/FeatureMatrix_Reduced.npy")[2000:5000,:,:]
+F = np.load("data/input_matrices/FeatureMatrix_Reduced.npy")
 A = np.load("data/input_matrices/Adj_Matrix_Reduced.npy")
+idx = np.load("data/input_matrices/idx.npy")
 print(F.shape)
-loader = HumanPresenceDataLoader(A, F, normalize=False)
 
+loader = HumanPresenceDataLoader(A, F, normalize=False)
 dataset = loader.get_dataset(num_t_in=12, num_t_out=12)
 print(next(iter(dataset)))
 
-pickle.dump(dataset, open("data/datasets/test_data_smaller.p", "wb"))
+# pickle.dump(dataset, open("data/datasets/test.p", "wb"))
 
 ################### Run Model ###################
 # better to run it in colab using binary file of the dataset
 
 batch_size = 16
-# test_loader, train_loader, static_edge_index = reshape_data(dataset, batch_size)
+threshold = 0.5
 
-# run_A3T_GNN(test_loader, train_loader, static_edge_index, idx)
+# GPU support
+# DEVICE = torch.device('cuda') # cuda
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# todo: pickle this and use it as input colab
+test_loader, train_loader, static_edge_index = reshape_data(dataset, batch_size, DEVICE)
+
+run_A3T_GNN(test_loader, train_loader, static_edge_index, idx, threshold, batch_size, DEVICE, epochs=1)
 

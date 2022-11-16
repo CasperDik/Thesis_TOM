@@ -1,13 +1,3 @@
-"""
-transform to .txt files to .npy in the format that can be used in the dataloader
-
-desired format:
-A, adj matrix --> NxN matrix with each entry the edge value, N=number of Nodes
-
-X, feature matrix --> TxNxF, For all T times, for all N nodes the array F with features
-
-"""
-
 import numpy as np
 import networkx as nx
 import matplotlib
@@ -16,6 +6,7 @@ import os
 
 
 def getfiles(path):
+    """based upon code originally designed by Laurens Kuiper"""
     folder_names = []
     for entry_name in os.listdir(path):
         entry_path = os.path.join(path, entry_name)
@@ -26,7 +17,7 @@ def getfiles(path):
     for folder in folder_names:
         # todo: different files?
         #if folder[-5:] == "100cm" and folder[:11] == "simulation1":
-        if folder == "simulation1-100p-100cm":
+        if folder == "simulation1-100p-100cm":      # 1 specific simulation
             for file in os.scandir(path+ "/" + folder):
                 if file.is_file() and file.path[-4:] == ".txt":
                     filepaths.append(file.path)
@@ -78,17 +69,19 @@ def feature_matrix(files: list):
 
 
 def adj_matrix(N_Nodes: int):
-    # get the adjacency matrix as defined in the thesis
+    # get the adjacency matrix as defined in the methodology
     # in GENERAL connect a node n to itself, next node below, node to the right, node to the right above and below diagonally
-    # but some exception! --> indicated in the comments below
+    # i.e. first degree neighbours
+    # but some exception! --> indicated in the comments below (when those do not connections do not exist)
 
     # only works if grid is a square matrix of NxN
     # only correct if adjacency matrix is symmetric --> undirected graph
 
     dim = int(np.sqrt(N_Nodes))
     adj_mat = np.zeros((N_Nodes, N_Nodes))
+
     for n in range(N_Nodes):
-        adj_mat[n, n] = 1
+        adj_mat[n, n] = 1   # connect each node to itself
 
         # right
         if not (n > (N_Nodes-dim-1)):     # if at last column, no connection to the right
@@ -115,7 +108,7 @@ def adj_matrix(N_Nodes: int):
 def plot_adj_matrix(A):
     matplotlib.use('TkAgg')
 
-    # confirms that adjacency matrix is correctly made
+    # confirms that adjacency matrix is correctly made --> check with 3x3 grid otherwise hard to determine
     Graph = nx.from_numpy_matrix(A, create_using=nx.DiGraph)
     nx.draw_networkx(Graph)
     plt.show()

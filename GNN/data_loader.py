@@ -2,24 +2,10 @@ import numpy as np
 import torch
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric_temporal import StaticGraphTemporalSignal
-import sys
-
 import pickle
 
 """"
 code is based upon the dataloaders of the torch geometric temporal library
-"""
-
-"""
-to install necessary libraries and dependencies:
-
-check/change python and cuda version:
-python -c "import torch; print(torch.__version__)"
-
-pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.1+cpu.html
-pip install torch-sparse -f https://data.pyg.org/whl/torch-1.12.1+cpu.html
-pip install torch-geometric
-pip install torch_geometric_temporal
 """
 
 class HumanPresenceDataLoader():
@@ -66,7 +52,7 @@ class HumanPresenceDataLoader():
 
 
     def get_dataset(self, num_t_in, num_t_out):
-        self.data_transformations(normalize=True)
+        self.data_transformations()
         self.get_edges_and_weights()
         self.get_features_and_target(num_t_in, num_t_out)
         dataset = StaticGraphTemporalSignal(self.edges, self.edge_weights, self.features, self.targets)

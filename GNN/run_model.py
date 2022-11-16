@@ -8,11 +8,7 @@ from GNN.STGNNs import A3T_GNN
 from GNN.data_loader import HumanPresenceDataLoader
 import pickle
 
-def run_A3T_GNN(test_loader, train_loader, static_edge_index, idx, threshold):
-    # GPU support
-    # DEVICE = torch.device('cuda') # cuda
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+def run_A3T_GNN(test_loader, train_loader, static_edge_index, idx, threshold, batch_size, DEVICE, epochs):
     # Create model and optimizers
     model = A3T_GNN(node_features=2, periods=12, batch_size=batch_size).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -20,10 +16,13 @@ def run_A3T_GNN(test_loader, train_loader, static_edge_index, idx, threshold):
 
     print_model_layout(model, optimizer)
 
-    for epoch in range(5):
+    for epoch in range(epochs):
         step = 0
         loss_list = []
         for encoder_inputs, labels in train_loader:
+            # assign to GPU
+            encoder_inputs, labels = encoder_inputs.to(DEVICE), labels.to(DEVICE)
+
             y_hat = model(encoder_inputs, static_edge_index)         # Get model predictions
             loss = loss_fn(y_hat, labels) # Mean squared error #loss = torch.mean((y_hat-labels)**2)  sqrt to change it to rmse
             loss.backward()
@@ -31,37 +30,38 @@ def run_A3T_GNN(test_loader, train_loader, static_edge_index, idx, threshold):
             optimizer.zero_grad()
             step = step+1
             loss_list.append(loss.item())
-            if step % 100 == 0 :
+            if step % 100 == 0:
                 print(sum(loss_list)/len(loss_list))
         print("Epoch {} train RMSE: {:.4f}".format(epoch, sum(loss_list)/len(loss_list)))
 
-    yhat, labels = evaluate_performance(model, loss_fn, static_edge_index, test_loader, threshold)
+    yhat, labels = evaluate_performance(model, loss_fn, static_edge_index, test_loader, threshold, DEVICE)
 
     plot_occupancy_grid(yhat, labels, t=1, batch_nr=5, threshold=threshold, idx=idx)
 
 
-def reshape_data(dataset, batch_size):
-    # GPU support
-    # DEVICE = torch.device('cuda') # cuda
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def reshape_data(dataset, batch_size, DEVICE):
     shuffle = True
 
     train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
     print("Number of train buckets: ", len(list(train_dataset)))
     print("Number of test buckets: ", len(list(test_dataset)))
 
-    train_input = np.array(train_dataset.features)  # (27399, 207, 2, 12)
-    train_target = np.array(train_dataset.targets)  # (27399, 207, 12)
-    train_x_tensor = torch.from_numpy(train_input).type(torch.FloatTensor).to(DEVICE)  # (B, N, F, T)
-    train_target_tensor = torch.from_numpy(train_target).type(torch.FloatTensor).to(DEVICE)  # (B, N, T)
+    train_input = np.array(train_dataset.features)
+    train_target = np.array(train_dataset.targets)
+
+    train_x_tensor = torch.from_numpy(train_input).type(torch.FloatTensor)
+    train_target_tensor = torch.from_numpy(train_target).type(torch.FloatTensor)
+
     train_dataset_new = torch.utils.data.TensorDataset(train_x_tensor, train_target_tensor)
     train_loader = torch.utils.data.DataLoader(train_dataset_new, batch_size=batch_size, shuffle=shuffle,
                                                drop_last=True)
 
-    test_input = np.array(test_dataset.features)  # (, 207, 2, 12)
-    test_target = np.array(test_dataset.targets)  # (, 207, 12)
-    test_x_tensor = torch.from_numpy(test_input).type(torch.FloatTensor).to(DEVICE)  # (B, N, F, T)
-    test_target_tensor = torch.from_numpy(test_target).type(torch.FloatTensor).to(DEVICE)  # (B, N, T)
+    test_input = np.array(test_dataset.features)
+    test_target = np.array(test_dataset.targets)
+
+    test_x_tensor = torch.from_numpy(test_input).type(torch.FloatTensor)
+    test_target_tensor = torch.from_numpy(test_target).type(torch.FloatTensor)
+
     test_dataset_new = torch.utils.data.TensorDataset(test_x_tensor, test_target_tensor)
     test_loader = torch.utils.data.DataLoader(test_dataset_new, batch_size=batch_size, shuffle=shuffle, drop_last=True)
 
@@ -129,7 +129,7 @@ def back_to_occupancy_grid(F, idx, batch_nr, t):
     return full_F
 
 
-def evaluate_performance(model, loss_fn, static_edge_index, test_loader, threshold):
+def evaluate_performance(model, loss_fn, static_edge_index, test_loader, threshold, DEVICE):
     model.eval()
     step = 0
     # Store for analysis
@@ -139,9 +139,12 @@ def evaluate_performance(model, loss_fn, static_edge_index, test_loader, thresho
     total_accuracy = []
     total_f1 = []
 
-    # todo: add the performance metrics and test it
+    # todo: also want performance per time step
 
     for encoder_inputs, labels in test_loader:
+        # assign to GPU
+        encoder_inputs, labels = encoder_inputs.to(DEVICE), labels.to(DEVICE)
+
         # Get model predictions
         yhat = model(encoder_inputs, static_edge_index)
 
@@ -180,7 +183,7 @@ def evaluate_performance(model, loss_fn, static_edge_index, test_loader, thresho
     print("Test recall: {:.4f}".format(sum(total_recall) / len(total_recall)))
     print("Test F1: {:.4f}".format(sum(total_f1) / len(total_f1)))
 
-    return yhat, labels     # todo: this returns the last yhat, should that be the case??
+    return yhat, labels
 
 
 def inside_model_performance_loop(yhat, labels, threshold):
@@ -230,7 +233,6 @@ if __name__ == "__main__":
     # run_A3T_GNN(test_loader, train_loader, static_edge_index, idx)
     y_hat = pickle.load(open("data/datasets/yhat.p", "rb"))
     labels = pickle.load(open("data/datasets/labels.p", "rb"))
-    # todo: klopt labels wel? is het normalized?
 
     inside_model_performance_loop(y_hat, labels, threshold=0.7)
 
