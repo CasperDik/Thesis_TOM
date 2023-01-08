@@ -4,7 +4,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import os
 
-
 def getfiles(path):
     """based upon code originally designed by Laurens Kuiper"""
     folder_names = []
@@ -16,11 +15,15 @@ def getfiles(path):
     filepaths = []
     for folder in folder_names:
         # todo: different files?
-        #if folder[-5:] == "100cm" and folder[:11] == "simulation1":
-        if folder == "simulation1-100p-100cm":      # 1 specific simulation
-            for file in os.scandir(path+ "/" + folder):
+        if folder[-5:] == "100cm" and folder[:11] == "simulation2":
+        #if folder == "simulation2-25p-100cm":      # 1 specific simulation
+            step = 0
+            for file in os.scandir(path + "/" + folder):
                 if file.is_file() and file.path[-4:] == ".txt":
-                    filepaths.append(file.path)
+                    step += 1
+                    #if int(file.path[-7:-5]) % 10 == 0: #control time interval
+                    if step > 60*60 and step < (60*60 + 15*60):    # only logs after hour in simulation
+                        filepaths.append(file.path)
 
     return filepaths
 
@@ -44,7 +47,6 @@ def load_features(f):
 
     return d
 
-
 def delete_hashtag(f):
     with open(f, "rb") as input_file:
         s = input_file.read()
@@ -54,19 +56,16 @@ def delete_hashtag(f):
     with open(f, "wb") as output_file:
         output_file.write(s)
 
-
 def feature_matrix(files: list):
-    f0 = load_features(files[0])
-    f1 = load_features(files[1])
+    f0 = load_features(files[0]).astype('uint8')
+    f1 = load_features(files[1]).astype('uint8')
     features = np.stack((f0, f1))
-
     for f in files[2:]:
         print(f)
-        d = load_features(f)
+        d = load_features(f).astype('uint8')
         features = np.vstack((features, d[None, :, :]))
     print(features.shape)
     return features
-
 
 def adj_matrix(N_Nodes: int):
     # get the adjacency matrix as defined in the methodology
@@ -78,7 +77,7 @@ def adj_matrix(N_Nodes: int):
     # only correct if adjacency matrix is symmetric --> undirected graph
 
     dim = int(np.sqrt(N_Nodes))
-    adj_mat = np.zeros((N_Nodes, N_Nodes))
+    adj_mat = np.zeros((N_Nodes, N_Nodes), dtype="uint8")
 
     for n in range(N_Nodes):
         adj_mat[n, n] = 1   # connect each node to itself

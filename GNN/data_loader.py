@@ -8,6 +8,7 @@ import pickle
 code is based upon the dataloaders of the torch geometric temporal library
 """
 
+
 class HumanPresenceDataLoader():
     def __init__(self, A, F, normalize: bool = False):
         self.A = A
@@ -16,7 +17,7 @@ class HumanPresenceDataLoader():
 
     def data_transformations(self):
         self.X = self.X.transpose((1, 2, 0))    # transpose not needed if in correct format imported
-        self.X = self.X.astype(np.float32)
+        #self.X = self.X.astype(np.float32)
 
         if self.norm == True:
             self.X = self.normalize_zscore(self.X)
@@ -25,10 +26,10 @@ class HumanPresenceDataLoader():
         self.X = torch.from_numpy(self.X)
 
     def normalize_zscore(self, X):
-        means = np.mean(X, axis=(0, 2))
-        X = X - means.reshape(1, -1, 1)
-        stds = np.std(X, axis=(0, 2))
-        X = X / stds.reshape(1, -1, 1)
+        self.means = np.mean(X, axis=(0, 2))
+        X = X - self.means.reshape(1, -1, 1)
+        self.stds = np.std(X, axis=(0, 2))
+        X = X / self.stds.reshape(1, -1, 1)
         return X
 
     def get_edges_and_weights(self):
@@ -57,19 +58,25 @@ class HumanPresenceDataLoader():
         self.get_features_and_target(num_t_in, num_t_out)
         dataset = StaticGraphTemporalSignal(self.edges, self.edge_weights, self.features, self.targets)
 
-        return dataset
+        if self.norm == True:
+            return [dataset, self.means, self.stds]
+        else:
+            return [dataset, "", ""]
 
 if __name__ == "__main__":
     F = np.load("data/input_matrices/FeatureMatrix.npy")
     A = np.load("data/input_matrices/Adj_Matrix.npy")
 
-    loader = HumanPresenceDataLoader(A, F)
+    loader = HumanPresenceDataLoader(A, F, normalize=True)
     dataset = loader.get_dataset(num_t_in=12, num_t_out=12)
-    print(next(iter(dataset)))
+    print(next(iter(dataset[0])))
 
-    pickle.dump(dataset, open("data/input_matrices/test_data_for_size.p", "wb"))
+    # pickle.dump(dataset, open("data/input_matrices/test_data_for_size.p", "wb"))
 
     # data = pickle.load(open("dataset.p", "rb"))
     # print(type(data))
     # print(next(iter(data)))
+
+
+
 
