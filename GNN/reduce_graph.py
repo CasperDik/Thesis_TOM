@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from CMap2D import gridshow, CMap2D
+#from CMap2D import gridshow, CMap2D
 
 def inspect_zero_values(F):
     F_prime = F[:, :, 0]

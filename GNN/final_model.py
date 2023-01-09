@@ -88,7 +88,6 @@ class STGNN_model():
         # normalize
         self.F = self.normalize_zscore(self.F)
 
-        # to dataloader?
 
     def normalize_zscore(self, F):
         F = F.transpose((1, 2, 0))
@@ -154,3 +153,8 @@ if __name__ == "__main__":
     txts = [r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m32s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m33s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m34s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m35s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m36s.txt"]
     yhat = model.run_model(paths_inputs=txts)
     model.export_as_txt(yhat, path="data/output/", regression_output=False, classification_output=True)
+
+
+
+    # todo: change model file and class
+    # todo: change threshold, time_in, time_out

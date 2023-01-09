@@ -5,7 +5,7 @@ from GNN.data_loader import HumanPresenceDataLoader
 from GNN.generate_input_matrices import getfiles, feature_matrix, adj_matrix, plot_adj_matrix
 from GNN.reduce_graph import reduce_graph, back_to_occupancy_grid
 
-name = "sim2_all_p_15min"
+name = "sim2_all_p_30min_5_30"
 
 ################### Feature Matrix ###################
 # extract data and F feature matrix
@@ -41,10 +41,10 @@ np.save("data/test_input_settings_datasets/idx_" + name + ".npy", idx)
 print(F.shape)
 
 loader = HumanPresenceDataLoader(A, F, normalize=True)
-dataset = loader.get_dataset(num_t_in=5, num_t_out=10)
+dataset = loader.get_dataset(num_t_in=5, num_t_out=30)
 print(next(iter(dataset[0])))
 
-pickle.dump(dataset, open("data/test_input_settings_datasets/dataset_norm_" + name + "_5_10.p", "wb"))
+pickle.dump(dataset, open("data/test_input_settings_datasets/dataset_norm_" + name + ".p", "wb"))
 
 # run model using GPU in google colab
 # see A3T-GCN.ipynb
