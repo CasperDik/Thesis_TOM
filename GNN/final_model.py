@@ -8,19 +8,19 @@ from torch_geometric_temporal.nn.recurrent import A3TGCN2, TGCN2
 
 class STGNN_model():
     def __init__(self):
-        self.A,_ = dense_to_sparse(torch.from_numpy(np.load(r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\input_matrices\Adj_Matrix_Reduced.npy")))  # change location later
+        self.A, _ = dense_to_sparse(torch.from_numpy(np.load(r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\input_matrices\Adj_Matrix_Reduced.npy")))  # change location later
         self.idx = np.load(r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\input_matrices\idx.npy")
         self.stgnn = TemporalGNN(node_features=4, periods_in=5, periods_out=20, batch_size=32, num_edges=self.A.shape[1])
         self.stgnn = torch.load(r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\model.pt", map_location=torch.device('cpu'))
         self.stgnn.eval()
+
     def run_model(self, paths_inputs:list):
         self.F = self.create_feature_matrix(paths_inputs)
 
         self.process_data()
-        yhat = self.get_outputs()
-        self.return_as_txt(yhat)
+        self.yhat = self.get_outputs()
 
-        return yhat
+        return self.yhat
 
     def create_feature_matrix(self, paths_inputs:list):
         paths_inputs = self.check_time_in(paths_inputs)
@@ -97,20 +97,23 @@ class STGNN_model():
         stds = np.std(F, axis=(0, 2))
         F = F / stds.reshape(1, -1, 1)
         F = np.expand_dims(F, axis=0)
-        #[batch_size, nodes, features, time]
+
         return F
 
     def get_outputs(self):
         with torch.no_grad():
             yhat = self.stgnn(torch.from_numpy(self.F.astype(np.float32)), self.A)
+        yhat = np.insert(yhat, self.idx[0] - np.arange(len(self.idx[0])), 0, axis=1)
         return yhat
 
-    def return_as_txt(self, yhat):
-        pass
-        # todo: add this part
-
-        # output .txt file
-        # both regression and binary classification result(with stored optimal threshold)?
+    def export_as_txt(self, yhat: np.ndarray, path: str = "", regression_output: bool = True, classification_output: bool = False):
+        for i in range(yhat.shape[2]):
+            if regression_output==True:
+                np.savetxt(path + "heatmap_reg_t" + str(i+1) + ".txt", yhat[0, :, i])
+            if classification_output==True:
+                threshold = 0.16
+                yhat = np.where(yhat > threshold, 1, 0).astype("uint8")
+                np.savetxt(path + "heatmap_class_t" + str(i + 1) + ".txt", yhat[0, :, i], )
 
 class TemporalGNN(torch.nn.Module):
     def __init__(self, node_features, periods_in, periods_out, batch_size, num_edges):
@@ -150,4 +153,4 @@ if __name__ == "__main__":
     model = STGNN_model()
     txts = [r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m32s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m33s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m34s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m35s.txt", r"C:\Users\caspe\OneDrive\Documenten\MSc TOM\Thesis TOM\GNN\data\logs_22-04-22\simulation1-50p-100cm\heatmap_08H57m36s.txt"]
     yhat = model.run_model(paths_inputs=txts)
-    print(yhat.shape)
+    model.export_as_txt(yhat, path="data/output/", regression_output=False, classification_output=True)

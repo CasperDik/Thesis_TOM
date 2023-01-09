@@ -22,7 +22,7 @@ def getfiles(path):
                 if file.is_file() and file.path[-4:] == ".txt":
                     step += 1
                     #if int(file.path[-7:-5]) % 10 == 0: #control time interval
-                    if step > 60*60 and step < (60*60 + 15*60):    # only logs after hour in simulation
+                    if step > 30*60 and step < (30*60 + 90*60):    # only logs after hour in simulation
                         filepaths.append(file.path)
 
     return filepaths
